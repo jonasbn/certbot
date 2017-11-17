@@ -84,7 +84,15 @@ class Account(object):  # pylint: disable=too-few-public-methods
 
 
 def report_new_account(config):
-    """Informs the user about their new ACME account."""
+    """Informs the user about their new ACME account.
+
+    :param config: Configuration object
+    :type config: interfaces.IConfig
+
+    :return: `None`
+    :rtype: None
+
+    """
     reporter = zope.component.queryUtility(interfaces.IReporter)
     if reporter is None:
         return
@@ -99,21 +107,67 @@ def report_new_account(config):
 
 
 class AccountMemoryStorage(interfaces.AccountStorage):
-    """In-memory account storage."""
+    """In-memory account storage.
 
+    :ivar list accounts: Accounts
+
+    """
     def __init__(self, initial_accounts=None):
+        """Save the registration resource.
+
+        :param initial_accounts: account whose regr should be saved
+        :type initial_accounts: list of Objects, defaults to `None`
+
+        :return: `None`
+        :rtype: None
+
+        """
         self.accounts = initial_accounts if initial_accounts is not None else {}
 
     def find_all(self):
+        """Finds all accounts
+
+        :return: List of accounts
+        :rtype: list(Account)
+
+        :raises errors.AccountNotFound:
+
+        """
         return list(six.itervalues(self.accounts))
 
     def save(self, account, acme):
+        """Save the registration resource.
+
+        :param account: account whose regr should be saved
+        :type account: Account
+
+        :param acme:
+        :type acme: Client
+
+        :return: `None`
+        :rtype: None
+
+        """
         # pylint: disable=unused-argument
         if account.id in self.accounts:
             logger.debug("Overwriting account: %s", account.id)
         self.accounts[account.id] = account
 
     def load(self, account_id):
+        """Loads the account identified by the specified id
+
+        :param account: account whose registration should be saved
+        :type: Account
+
+        :param account_id: account id
+        :type: str
+
+        :return: `None`
+        :rtype: None
+
+        :raises errors.AccountNotFound:
+
+        """
         try:
             return self.accounts[account_id]
         except KeyError:
@@ -133,30 +187,92 @@ class RegistrationResourceWithNewAuthzrURI(messages.RegistrationResource):
 class AccountFileStorage(interfaces.AccountStorage):
     """Accounts file storage.
 
-    :ivar .IConfig config: Client configuration
+    :ivar interfaces.IConfig config: Client configuration
 
     """
     def __init__(self, config):
+        """TODO
+
+        :param config: Configuration object
+        :type config: interfaces.IConfig
+
+        :return: `None`
+        :rtype: None
+
+        """
         self.config = config
         util.make_or_verify_dir(config.accounts_dir, 0o700, os.geteuid(),
                                    self.config.strict_permissions)
 
     def _account_dir_path(self, account_id):
+        """TODO
+
+        :param account: account whose regr should be saved
+        :type: Account
+
+        :param account_id: account id
+        :type: str
+
+        :return: `None`
+        :rtype: None
+
+        """
         return os.path.join(self.config.accounts_dir, account_id)
 
     @classmethod
     def _regr_path(cls, account_dir_path):
+        """TODO
+
+        :param cls: class
+
+        :param account_dir_path: account directory path
+        :type account_dir_path: str
+
+        :return: `None`
+        :rtype: None
+
+        """
         return os.path.join(account_dir_path, "regr.json")
 
     @classmethod
     def _key_path(cls, account_dir_path):
+        """TODO
+
+        :param cls: class
+
+        :param account_dir_path: account directory path
+        :type account_dir_path: str
+
+        :return: `None`
+        :rtype: None
+
+        """
         return os.path.join(account_dir_path, "private_key.json")
 
     @classmethod
     def _metadata_path(cls, account_dir_path):
+        """TODO
+
+        :param cls: class
+
+        :param account_dir_path: account directory path
+        :type account_dir_path: str
+
+        :return: `None`
+        :rtype: None
+
+        """
         return os.path.join(account_dir_path, "meta.json")
 
     def find_all(self):
+        """TODO
+
+        :return: List of Accounts
+        :rtype: list(Account)
+
+        :raises errors.AccountStorageError:
+
+        """
         try:
             candidates = os.listdir(self.config.accounts_dir)
         except OSError:
@@ -171,6 +287,19 @@ class AccountFileStorage(interfaces.AccountStorage):
         return accounts
 
     def load(self, account_id):
+        """TODO
+
+        :param account_id: account id
+        :type account_id: str
+
+        :return: `None`
+        :rtype: None
+
+        :raises errors.AccountNotFound: if account does not exist
+
+        :raises errors.AccountStorageError: if account cannot be loaded
+
+        """
         account_dir_path = self._account_dir_path(account_id)
         if not os.path.isdir(account_dir_path):
             raise errors.AccountNotFound(
@@ -194,12 +323,31 @@ class AccountFileStorage(interfaces.AccountStorage):
         return acc
 
     def save(self, account, acme):
+        """Save the account
+
+        :param account: account whose regr should be saved
+        :type account: Account
+
+        :param acme: Acme client
+        :type acme: Client
+
+        :return: `None`
+        :rtype: None
+
+        """
         self._save(account, acme, regr_only=False)
 
     def save_regr(self, account, acme):
         """Save the registration resource.
 
-        :param Account account: account whose regr should be saved
+        :param account: account whose regr should be saved
+        :type account: Account
+
+        :param acme: Acme client
+        :type acme: Client
+
+        :return: `None`
+        :rtype: None
 
         """
         self._save(account, acme, regr_only=True)
@@ -208,6 +356,12 @@ class AccountFileStorage(interfaces.AccountStorage):
         """Delete registration info from disk
 
         :param account_id: id of account which should be deleted
+        :type account_id: str
+
+        :return: `None`
+        :rtype: None
+
+        :raises errors.AccountNotFound: if account cannot be found
 
         """
         account_dir_path = self._account_dir_path(account_id)
@@ -217,6 +371,23 @@ class AccountFileStorage(interfaces.AccountStorage):
         shutil.rmtree(account_dir_path)
 
     def _save(self, account, acme, regr_only):
+        """TODO
+
+        :param account: Account object
+        :type account: Account
+
+        :param acme: Client object
+        :type acme: Client
+
+        :param regr_only: Flag indicating whether it is only a registration resource
+        :type regr_only: bool
+
+        :return: `None`
+        :rtype: None
+
+        :raises errors.AccountStorageError: if serialization of the account is not possible
+
+        """
         account_dir_path = self._account_dir_path(account.id)
         util.make_or_verify_dir(account_dir_path, 0o700, os.geteuid(),
                                 self.config.strict_permissions)
